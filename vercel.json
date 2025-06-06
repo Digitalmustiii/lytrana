@@ -1,31 +1,7 @@
 {
   "version": 2,
   "headers": [
-    {
-      "source": "/fonts/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-    },
-    {
-      "source": "/images/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-    },
-    {
-      "source": "/(.*).(svg|jpg|jpeg|png|gif|webp)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
-    },
-    {
-      "source": "/api/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "s-maxage=60, stale-while-revalidate=59" }]
-    }
-  ],
-  "rewrites": [
-    { "source": "/blog/:slug", "destination": "/posts/:slug" }
-  ],
-  "redirects": [
-    { "source": "/old-path", "destination": "/", "permanent": true }
-  ],
-  "functions": {
-    
-    "api/hello.edge.js": { "runtime": "edge", "maxDuration": 5 }
-  }
+    { "source": "/(fonts|images|.*\\.(svg|jpg|png))", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+    { "source": "/api/(.*)",       "headers": [{ "key": "Cache-Control", "value": "s-maxage=60, stale-while-revalidate=59" }] }
+  ]
 }
