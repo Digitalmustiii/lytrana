@@ -1,7 +1,23 @@
 {
   "version": 2,
   "headers": [
-    { "source": "/(fonts|images|.*\\.(svg|jpg|png))", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
-    { "source": "/api/(.*)",       "headers": [{ "key": "Cache-Control", "value": "s-maxage=60, stale-while-revalidate=59" }] }
-  ]
+    {
+      "source": "/(fonts|images|.*\\.(svg|jpg|png))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "s-maxage=60, stale-while-revalidate=59" }
+      ]
+    }
+  ],
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "vercel-nodejs@18.x",
+      "maxDuration": 10
+    }
+  }
 }
