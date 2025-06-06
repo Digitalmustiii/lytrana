@@ -1,0 +1,119 @@
+LYTRANA/
+├── README.md 
+├── package.json
+├── next.config.js
+├── tailwind.config.js
+├── tsconfig.json
+├── .env.local
+│
+├── convex/
+│   ├── _generated/
+│   ├── schema.ts
+│   ├── datasets.ts
+│   └── reports.ts
+│
+├── src/
+│   ├── app/
+│   │   ├── globals.css (completed)
+│   │   ├── layout.tsx  (completed)
+│   │   ├── page.tsx    (completed) 
+│   │   │ 
+│   │   ├── dashboard/
+│   │   │   └── page.tsx (completed)
+│   │   │
+│   │   ├── analysis/
+│   │   │   └── [id]/
+│   │   │       └── page.tsx 
+            upload/
+                    page.tsx (completed)
+│   │   │
+│   │   ├── reports/
+│   │   │   ├── page.tsx
+│   │   │   └── [id]/
+│   │   │       └── page.tsx
+│   │   │
+│   │   └── api/
+│   │       ├── upload/
+│   │       │   └── route.ts (completed)
+│   │       ├── analyze/
+│   │       │   └── route.ts
+│   │       └── ai-insights/
+│   │           └── route.ts
+│   │
+│   ├── components/
+│   │   ├── ui/
+│   │   │   ├── Button.tsx
+│   │   │   ├── Card.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   └── LoadingSpinner.tsx
+                Header.tsx (completed)
+│   │   │
+│   │   ├── charts/
+│   │   │   ├── BarChart.tsx
+│   │   │   ├── LineChart.tsx
+│   │   │   ├── Histogram.tsx
+│   │   │   └── CorrelationHeatmap.tsx
+│   │   │
+│   │   ├── FileUpload/page.tsx (completed)
+│   │   ├── DataTable.tsx
+│   │   ├── StatsPanel.tsx
+│   │   ├── AIInsights.tsx
+│   │   └── ShareReport.tsx
+│   │
+│   ├── lib/
+│   │   ├── utils.ts
+│   │   ├── data-analyzer.ts
+│   │   ├── chart-helpers.ts
+│   │   └── ai-client.ts
+│   │
+│   └── types/
+│       ├── dataset.ts
+│       ├── analysis.ts
+│       └── report.ts
+│
+├── public/
+│   ├── favicon.ico
+│   └── sample-data/
+│       └── example.csv
+│
+└── docs/
+    ├── setup.md
+    └── deployment.md
+
+
+    Looking at your project structure and the dashboard we just built, here's what I recommend building next:
+Next Priority: File Upload Component (src/components/FileUpload/page.tsx)
+Why this is the logical next step:
+
+Core Functionality: Data upload is the foundation of your entire platform
+User Journey: Your dashboard's "Upload Dataset" button needs to work
+Enables Everything Else: Without file upload, you can't build analysis or reports
+
+What the File Upload Should Include:
+Key Features:
+
+Drag & Drop Interface - Modern, intuitive file dropping
+CSV File Validation - Ensure only CSV files are accepted
+Upload Progress - Show upload status and progress bar
+File Preview - Show first few rows of uploaded data
+Error Handling - Clear error messages for invalid files
+Integration with your API route (/api/upload/route.ts)
+
+After File Upload, The Natural Sequence Would Be:
+
+File Upload ← Next
+Upload API Route (/api/upload/route.ts)
+Data Analysis Page (/analysis/[id]/page.tsx)
+Analysis API Route (/api/analyze/route.ts)
+Charts Components (BarChart, LineChart, etc.)
+Reports System
+
+Alternative Approach:
+If you want to see the full user flow working end-to-end first, we could build a simplified upload page (/upload/page.tsx) that combines upload + basic preview, then refine it later.
+What would you prefer?
+
+Build the FileUpload component first?
+Create the full upload page?
+Or do you have a different priority in mind?
+
+The file upload is definitely the critical next piece - it's what transforms your landing page from a demo into a working application!
