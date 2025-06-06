@@ -7,10 +7,11 @@ LYTRANA/
 ├── .env.local
 │
 ├── convex/
-│   ├── _generated/
-│   ├── schema.ts
-│   ├── datasets.ts
-│   └── reports.ts
+│   ├── _generated/ 
+│   ├── schema.ts (completed)
+│   ├── datasets.ts (completed)
+│   └── reports.ts (completed)
+        analysis.ts (completed)
 │
 ├── src/
 │   ├── app/
@@ -35,10 +36,10 @@ LYTRANA/
 │   │   └── api/
 │   │       ├── upload/
 │   │       │   └── route.ts (completed)
-│   │       ├── analyze/
-│   │       │   └── route.ts
+│   │       ├── analyze/ 
+│   │       │   └── route.ts (completed)
 │   │       └── ai-insights/
-│   │           └── route.ts
+│   │           └── route.ts (completed)
 │   │
 │   ├── components/
 │   │   ├── ui/
