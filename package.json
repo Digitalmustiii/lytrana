@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "analyze": "ANALYZE=true npm run build",
+    "type-check": "tsc --noEmit",
+    "build:analyze": "cross-env ANALYZE=true next build",
+    "build:production": "cross-env NODE_ENV=production next build",
+    "optimize": "npm run type-check && npm run lint && npm run build:production"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",
