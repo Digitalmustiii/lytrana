@@ -16,7 +16,7 @@
   ],
   "functions": {
     "api/**/*.ts": {
-      "runtime": "vercel-nodejs@18.x",
+      "runtime": "vercel/node@20.x",
       "maxDuration": 10
     }
   }
