@@ -39,7 +39,32 @@ export async function POST(request: NextRequest) {
 
     console.log('📊 CSV parsed - Headers:', headers.length, 'Rows:', dataRows.length);
 
+    // Detect column types from first few rows
+    const columns = headers.map(header => {
+      const values = dataRows.slice(0, 10).map(row => {
+        const cols = row.split(',');
+        const index = headers.indexOf(header);
+        return cols[index]?.trim().replace(/"/g, '');
+      }).filter(v => v && v !== '');
+
+      let type = 'string';
+      if (values.length > 0) {
+        const isNumeric = values.every(v => !isNaN(Number(v)) && v !== '');
+        if (isNumeric) type = 'number';
+      }
+
+      return {
+        name: header,
+        type,
+        nullable: false,
+      };
+    });
+
     const timestamp = Date.now();
+    
+    // Store CSV data as base64 for retrieval
+    const fileUrl = `data:text/csv;base64,${Buffer.from(csvText).toString('base64')}`;
+
     const fileInfo = {
       id: timestamp.toString(),
       filename: file.name,
@@ -49,17 +74,21 @@ export async function POST(request: NextRequest) {
       rowCount: dataRows.length,
       columnCount: headers.length,
       headers: headers,
-      // Store CSV data as base64 for now (in production, you'd save to database)
-      fileUrl: `data:text/csv;base64,${Buffer.from(csvText).toString('base64')}`
+      columns: columns,
+      fileUrl: fileUrl,
+      csvData: csvText
     };
 
-    console.log('✅ Returning success response');
+    console.log('✅ Returning success response with columns:', columns);
 
     return NextResponse.json({
       message: 'File uploaded successfully',
       file: fileInfo,
-      fileUrl: fileInfo.fileUrl,
-      csvData: csvText // Include raw CSV data for immediate processing
+      fileUrl: fileUrl,
+      csvData: csvText,
+      columns: columns,
+      rowCount: dataRows.length,
+      columnCount: headers.length
     });
 
   } catch (error) {
