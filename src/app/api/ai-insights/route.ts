@@ -3,7 +3,20 @@ import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+// Initialize Convex client with proper error handling
+let convex: ConvexHttpClient | null = null;
+
+try {
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!convexUrl) {
+    console.error('NEXT_PUBLIC_CONVEX_URL is not defined');
+  } else {
+    console.log('Initializing Convex with URL:', convexUrl);
+    convex = new ConvexHttpClient(convexUrl);
+  }
+} catch (error) {
+  console.error('Failed to initialize Convex client:', error);
+}
 
 interface NumericalColumn {
   column: string;
@@ -51,6 +64,16 @@ export async function POST(request: NextRequest) {
     console.log('Analysis ID:', analysisId);
     console.log('Dataset Name:', datasetName);
     console.log('Statistics:', JSON.stringify(statistics, null, 2));
+    console.log('Convex URL:', process.env.NEXT_PUBLIC_CONVEX_URL);
+    
+    // Check if Convex client is initialized
+    if (!convex) {
+      console.error('Convex client not initialized');
+      return NextResponse.json({ 
+        error: 'Database connection not available',
+        details: 'NEXT_PUBLIC_CONVEX_URL is missing or invalid'
+      }, { status: 500 });
+    }
     
     // Check if API key exists
     if (!process.env.GOOGLE_GEMINI_API_KEY) {
@@ -146,10 +169,14 @@ Example format: ["Insight 1", "Insight 2", "Insight 3", "Insight 4"]`;
         `Statistical summary generated successfully for further analysis`
       ];
       
-      await convex.mutation(api.analysis.updateAIInsights, {
-        id: analysisId,
-        insights: fallbackInsights
-      });
+      try {
+        await convex.mutation(api.analysis.updateAIInsights, {
+          id: analysisId,
+          insights: fallbackInsights
+        });
+      } catch (convexError) {
+        console.error('Failed to save fallback insights:', convexError);
+      }
       
       return NextResponse.json({ 
         success: true, 
