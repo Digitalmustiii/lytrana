@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
 
 export async function POST(request: NextRequest) {
   console.log('📁 Upload API called');
   
   try {
-    // Log the request details
-    console.log('📋 Request content-type:', request.headers.get('content-type'));
-    
     const data = await request.formData();
-    console.log('📊 FormData parsed successfully');
-    
     const file: File | null = data.get('file') as unknown as File;
-    console.log('📄 File from formData:', file ? `${file.name} (${file.size} bytes)` : 'null');
 
     if (!file) {
       console.error('❌ No file received');
       return NextResponse.json({ error: 'No file received' }, { status: 400 });
     }
+
+    console.log('📄 File received:', file.name, `${file.size} bytes`);
 
     // Validate file type
     if (!file.name.endsWith('.csv')) {
@@ -33,45 +28,42 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ File validation passed');
 
-    // Create unique filename with timestamp
+    // Read file content as text
+    const csvText = await file.text();
+    console.log('✅ File content read successfully, length:', csvText.length);
+
+    // Parse CSV headers for metadata
+    const lines = csvText.split('\n').filter(line => line.trim());
+    const headers = lines[0] ? lines[0].split(',').map(h => h.trim().replace(/"/g, '')) : [];
+    const dataRows = lines.slice(1);
+
+    console.log('📊 CSV parsed - Headers:', headers.length, 'Rows:', dataRows.length);
+
     const timestamp = Date.now();
-    const filename = `${timestamp}_${file.name}`;
-    
-    console.log('🏷️ Generated filename:', filename);
-    console.log('☁️ Attempting to upload to Vercel Blob...');
-
-    // Upload to Vercel Blob
-    const blob = await put(filename, file, {
-      access: 'public',
-    });
-
-    console.log('✅ Blob upload successful:', blob.url);
-
     const fileInfo = {
       id: timestamp.toString(),
       filename: file.name,
       originalName: file.name,
       size: file.size,
       uploadedAt: new Date().toISOString(),
-      fileUrl: blob.url
+      rowCount: dataRows.length,
+      columnCount: headers.length,
+      headers: headers,
+      // Store CSV data as base64 for now (in production, you'd save to database)
+      fileUrl: `data:text/csv;base64,${Buffer.from(csvText).toString('base64')}`
     };
 
-    console.log('📤 Returning success response');
+    console.log('✅ Returning success response');
 
     return NextResponse.json({
       message: 'File uploaded successfully',
       file: fileInfo,
-      fileUrl: blob.url
+      fileUrl: fileInfo.fileUrl,
+      csvData: csvText // Include raw CSV data for immediate processing
     });
 
   } catch (error) {
-    // Enhanced error logging
-    console.error('💥 Upload error details:');
-    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    console.error('Full error object:', error);
-    
-    // Return detailed error for debugging (remove in production)
+    console.error('💥 Upload error:', error);
     return NextResponse.json(
       { 
         error: 'Failed to upload file',
@@ -88,8 +80,6 @@ export async function GET() {
   return NextResponse.json({ 
     message: 'Upload endpoint ready',
     timestamp: new Date().toISOString(),
-    env: {
-      hasBlob: !!process.env.BLOB_READ_WRITE_TOKEN
-    }
+    status: 'healthy'
   });
 }
