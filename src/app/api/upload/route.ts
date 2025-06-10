@@ -1,6 +1,6 @@
+// First install: npm install @vercel/blob
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
+import { put } from '@vercel/blob';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,30 +21,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File size too large' }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     // Create unique filename with timestamp
     const timestamp = Date.now();
     const filename = `${timestamp}_${file.name}`;
-    const filepath = join(process.cwd(), 'public/uploads', filename);
 
-    // Write file to uploads directory
-    await writeFile(filepath, buffer);
+    // Upload to Vercel Blob
+    const blob = await put(filename, file, {
+      access: 'public',
+    });
 
-    // In a real app, you'd save file info to database here
     const fileInfo = {
       id: timestamp.toString(),
       filename: file.name,
       originalName: file.name,
       size: file.size,
       uploadedAt: new Date().toISOString(),
-      path: `/uploads/${filename}`
+      fileUrl: blob.url // This is the public URL
     };
 
     return NextResponse.json({
       message: 'File uploaded successfully',
-      file: fileInfo
+      file: fileInfo,
+      fileUrl: blob.url
     });
 
   } catch (error) {
