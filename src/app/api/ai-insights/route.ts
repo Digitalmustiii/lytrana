@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
-import { Id } from '../../../../convex/_generated/dataModel';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-interface NumericalColumn {
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// Initialize Google Gemini
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
+
+interface ColumnAnalysis {
   column: string;
   mean: number;
   median: number;
@@ -13,289 +18,196 @@ interface NumericalColumn {
   count: number;
 }
 
-interface CategoricalColumn {
+interface CategoricalAnalysis {
   column: string;
   uniqueCount: number;
-  topValues: Array<{ value: string; count: number }>;
+  topValues: { value: string; count: number; }[];
 }
 
-interface Statistics {
-  numerical: NumericalColumn[];
-  categorical: CategoricalColumn[];
-}
-
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{
-        text?: string;
-      }>;
-    };
-  }>;
-}
-
-interface RequestBody {
-  analysisId: Id<"analyses">;
-  statistics: Statistics;
-  datasetName: string;
-}
-
-function initializeConvexClient() {
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || process.env.CONVEX_DEPLOYMENT;
-  
-  if (!convexUrl) {
-    console.error('No Convex URL found in environment variables');
-    console.log('Available env vars:', {
-      NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
-      CONVEX_DEPLOYMENT: process.env.CONVEX_DEPLOYMENT
-    });
-    return null;
-  }
-  
-  // Validate URL format
-  try {
-    new URL(convexUrl);
-    console.log('Using Convex URL:', convexUrl);
-    return new ConvexHttpClient(convexUrl);
-  } catch (error) {
-    console.error('Invalid Convex URL format:', convexUrl, error);
-    return null;
-  }
+interface CorrelationAnalysis {
+  column1: string;
+  column2: string;
+  correlation: number;
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🧠 AI Insights API called');
+  
   try {
-    const requestBody: RequestBody = await request.json();
-    const { analysisId, statistics, datasetName } = requestBody;
+    const {
+      analysisId,
+      statistics,
+      correlations,
+      datasetName,
+      rowCount,
+      columnCount
+    } = await request.json();
+
+    if (!analysisId || !statistics) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    console.log('🤖 Generating AI insights for analysis:', analysisId);
+
+    // Prepare data summary for AI analysis
+    const dataSummary = prepareDataSummary(statistics, correlations, datasetName, rowCount, columnCount);
     
-    console.log('=== AI INSIGHTS API CALLED ===');
-    console.log('Analysis ID:', analysisId);
-    console.log('Dataset Name:', datasetName);
-    console.log('Environment check:', {
-      NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
-      CONVEX_DEPLOYMENT: process.env.CONVEX_DEPLOYMENT,
-      GOOGLE_GEMINI_API_KEY: !!process.env.GOOGLE_GEMINI_API_KEY
-    });
+    // Generate AI insights using Google Gemini
+    const aiInsights = await generateAIInsights(dataSummary);
     
-    // Initialize Convex client
-    const convex = initializeConvexClient();
-    
-    // Check if API key exists
-    if (!process.env.GOOGLE_GEMINI_API_KEY) {
-      console.error('Missing Gemini API key');
-      return NextResponse.json({ error: 'AI service not configured' }, { status: 500 });
+    if (aiInsights.length > 0) {
+      // Update the analysis with AI insights
+      await convex.mutation(api.analysis.updateAIInsights, {
+        id: analysisId,
+        insights: aiInsights
+      });
+
+      console.log('✅ AI insights generated and saved:', aiInsights.length);
     }
 
-    // Create a more detailed prompt
-    const prompt = `You are a data analyst. Analyze this dataset and provide exactly 4 key insights in JSON array format.
-
-Dataset: "${datasetName}"
-
-${statistics.numerical.length > 0 ? `
-Numerical Columns:
-${statistics.numerical.map((col: NumericalColumn) => 
-  `- ${col.column}: mean=${col.mean.toFixed(2)}, median=${col.median.toFixed(2)}, std=${col.std.toFixed(2)}, range=${col.min}-${col.max}, count=${col.count}`
-).join('\n')}
-` : ''}
-
-${statistics.categorical.length > 0 ? `
-Categorical Columns:
-${statistics.categorical.map((col: CategoricalColumn) => 
-  `- ${col.column}: ${col.uniqueCount} unique values, top values: ${col.topValues.slice(0, 3).map(v => `${v.value}(${v.count})`).join(', ')}`
-).join('\n')}
-` : ''}
-
-Respond with ONLY a JSON array of 4 strings, each containing one insight. Focus on:
-1. Data distribution patterns
-2. Notable statistics or outliers
-3. Data quality observations
-4. Business implications
-
-Example format: ["Insight 1", "Insight 2", "Insight 3", "Insight 4"]`;
-
-    console.log('Calling Gemini API...');
-
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`;
-
-    // Call Gemini API
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'DataAnalysis/1.0'
-      },
-      body: JSON.stringify({
-        contents: [{ 
-          parts: [{ text: prompt }] 
-        }],
-        generationConfig: { 
-          temperature: 0.3,
-          maxOutputTokens: 1000,
-          topP: 0.8,
-          topK: 40
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE"
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE"
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE"
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE"
-          }
-        ]
-      })
-    });
-
-    console.log('Gemini API Response status:', response.status);
-
-    // Generate insights regardless of Gemini API success
-    let insights: string[] = [];
-
-    if (response.ok) {
-      try {
-        const data: GeminiResponse = await response.json();
-        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log('Raw AI response:', aiText);
-        
-        if (aiText) {
-          // Try to parse as JSON first
-          const jsonMatch = aiText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            insights = JSON.parse(jsonMatch[0]);
-            console.log('Successfully parsed JSON insights:', insights);
-          } else {
-            // Extract insights from text
-            const lines = aiText.split('\n')
-              .map(line => line.trim())
-              .filter(line => line.length > 0);
-            
-            insights = lines
-              .filter(line => 
-                line.match(/^\d+\./) || 
-                line.match(/^[-*•]/) || 
-                line.length > 20
-              )
-              .map(line => 
-                line.replace(/^\d+\.\s*/, '')
-                   .replace(/^[-*•]\s*/, '')
-                   .replace(/^"|"$/g, '')
-                   .trim()
-              )
-              .filter(line => line.length > 10)
-              .slice(0, 4);
-          }
-        }
-      } catch (parseError) {
-        console.log('Failed to parse Gemini response:', parseError);
-      }
-    } else {
-      const errorText = await response.text();
-      console.error(`Gemini API failed: ${response.status}`, errorText);
-    }
-
-    // Generate fallback insights if needed
-    if (!insights || insights.length < 4) {
-      console.log('Generating fallback insights');
-      
-      const fallbackInsights = [];
-      
-      if (statistics.numerical.length > 0) {
-        const avgMean = statistics.numerical.reduce((sum, col) => sum + col.mean, 0) / statistics.numerical.length;
-        fallbackInsights.push(`Dataset contains ${statistics.numerical.length} numerical columns with an average mean of ${avgMean.toFixed(2)}`);
-        
-        const highVariability = statistics.numerical.filter(col => col.std > col.mean * 0.5);
-        if (highVariability.length > 0) {
-          fallbackInsights.push(`${highVariability.length} numerical columns show high variability, indicating diverse data distribution patterns`);
-        }
-      }
-      
-      if (statistics.categorical.length > 0) {
-        const totalUniqueValues = statistics.categorical.reduce((sum, col) => sum + col.uniqueCount, 0);
-        fallbackInsights.push(`Categorical data spans ${statistics.categorical.length} columns with ${totalUniqueValues} total unique values`);
-        
-        const highCardinality = statistics.categorical.filter(col => col.uniqueCount > 10);
-        if (highCardinality.length > 0) {
-          fallbackInsights.push(`${highCardinality.length} categorical columns have high cardinality, suggesting rich data categorization`);
-        }
-      }
-      
-      // Fill remaining slots if needed
-      const additionalInsights = [
-        `Dataset "${datasetName}" demonstrates well-structured data organization`,
-        `Data quality metrics indicate consistent and reliable information`,
-        `Statistical analysis reveals balanced distribution across data points`,
-        `Further analysis recommended to uncover deeper business patterns`
-      ];
-      
-      for (let i = fallbackInsights.length; i < 4; i++) {
-        if (additionalInsights[i - fallbackInsights.length]) {
-          fallbackInsights.push(additionalInsights[i - fallbackInsights.length]);
-        }
-      }
-      
-      insights = fallbackInsights.slice(0, 4);
-    }
-
-    // Ensure we have exactly 4 valid insights
-    insights = insights
-      .filter(insight => typeof insight === 'string' && insight.trim().length > 0)
-      .slice(0, 4);
-
-    // Pad with generic insights if still short
-    while (insights.length < 4) {
-      insights.push(`Data analysis completed for "${datasetName}" dataset`);
-    }
-
-    console.log('Final insights generated:', insights);
-
-    // Try to save to Convex if available
-    if (convex) {
-      try {
-        await convex.mutation(api.analysis.updateAIInsights, {
-          id: analysisId,
-          insights: insights
-        });
-        console.log('Successfully saved insights to database');
-      } catch (convexError) {
-        console.error('Failed to save to Convex, but continuing:', convexError);
-        // Don't fail the request if Convex fails
-      }
-    } else {
-      console.log('Convex not available, returning insights without saving');
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      insights: insights,
-      savedToDatabase: !!convex
+    return NextResponse.json({
+      success: true,
+      insights: aiInsights,
+      message: 'AI insights generated successfully'
     });
 
   } catch (error) {
-    console.error('AI insights error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Return a fallback response even on error
-    const fallbackInsights = [
-      "Dataset analysis completed successfully",
-      "Statistical processing generated comprehensive metrics", 
-      "Data structure appears well-organized and consistent",
-      "Ready for visualization and further analysis"
-    ];
-    
-    return NextResponse.json({ 
-      success: true,
-      insights: fallbackInsights,
-      error: errorMessage,
-      timestamp: new Date().toISOString()
-    });
+    console.error('💥 AI Insights error:', error);
+    return NextResponse.json(
+      {
+        error: 'AI insights generation failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
+}
+
+function prepareDataSummary(
+  statistics: { numerical: ColumnAnalysis[], categorical: CategoricalAnalysis[] },
+  correlations: CorrelationAnalysis[] | undefined,
+  datasetName: string,
+  rowCount: number,
+  columnCount: number
+): string {
+  let summary = `Dataset Analysis Summary for "${datasetName}":\n\n`;
+  summary += `Dataset Overview:\n`;
+  summary += `- Total rows: ${rowCount}\n`;
+  summary += `- Total columns: ${columnCount}\n`;
+  summary += `- Numerical columns: ${statistics.numerical.length}\n`;
+  summary += `- Categorical columns: ${statistics.categorical.length}\n\n`;
+
+  if (statistics.numerical.length > 0) {
+    summary += `Numerical Columns Analysis:\n`;
+    statistics.numerical.forEach((col: ColumnAnalysis) => {
+      summary += `- ${col.column}: mean=${col.mean}, std=${col.std}, range=[${col.min}, ${col.max}]\n`;
+    });
+    summary += `\n`;
+  }
+
+  if (statistics.categorical.length > 0) {
+    summary += `Categorical Columns Analysis:\n`;
+    statistics.categorical.forEach((col: CategoricalAnalysis) => {
+      const topValue = col.topValues[0];
+      summary += `- ${col.column}: ${col.uniqueCount} unique values, most frequent: "${topValue.value}" (${topValue.count} times)\n`;
+    });
+    summary += `\n`;
+  }
+
+  if (correlations && correlations.length > 0) {
+    summary += `Correlations Found:\n`;
+    correlations
+      .filter((corr: CorrelationAnalysis) => Math.abs(corr.correlation) > 0.3)
+      .slice(0, 5)
+      .forEach((corr: CorrelationAnalysis) => {
+        summary += `- ${corr.column1} ↔ ${corr.column2}: ${corr.correlation}\n`;
+      });
+  }
+
+  return summary;
+}
+
+async function generateAIInsights(dataSummary: string): Promise<string[]> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const prompt = `
+As a data analyst, analyze the following dataset summary and provide 5-7 key insights about the data. 
+Focus on:
+1. Data quality observations
+2. Interesting patterns or trends
+3. Potential business implications
+4. Statistical significance of findings
+5. Recommendations for further analysis
+6. Data anomalies or outliers
+7. Relationships between variables
+
+Dataset Summary:
+${dataSummary}
+
+Please provide insights as separate bullet points, each being 1-2 sentences long. Be specific and actionable.
+Do not include generic statements. Focus on the actual data characteristics shown.
+`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse the response into individual insights
+    const insights = text
+      .split('\n')
+      .filter((line: string) => line.trim().length > 0)
+      .filter((line: string) => line.includes('•') || line.includes('-') || line.includes('*') || /^\d+\./.test(line.trim()))
+      .map((line: string) => line.replace(/^[\s•\-*\d\.]+/, '').trim())
+      .filter((insight: string) => insight.length > 20)
+      .slice(0, 8); // Limit to 8 insights max
+
+    return insights.length > 0 ? insights : [
+      'Dataset analysis completed successfully.',
+      'Consider exploring relationships between numerical variables for deeper insights.',
+      'Review categorical distributions for potential data quality issues.'
+    ];
+
+  } catch (error) {
+    console.error('Error generating AI insights:', error);
+    
+    // Fallback insights based on data summary
+    return generateFallbackInsights(dataSummary);
+  }
+}
+
+function generateFallbackInsights(dataSummary: string): string[] {
+  const insights: string[] = [];
+  
+  // Extract basic information from summary
+  const numericalMatch = dataSummary.match(/Numerical columns: (\d+)/);
+  const categoricalMatch = dataSummary.match(/Categorical columns: (\d+)/);
+  const rowsMatch = dataSummary.match(/Total rows: (\d+)/);
+  
+  const numericalCount = numericalMatch ? parseInt(numericalMatch[1]) : 0;
+  const categoricalCount = categoricalMatch ? parseInt(categoricalMatch[1]) : 0;
+  const totalRows = rowsMatch ? parseInt(rowsMatch[1]) : 0;
+  
+  if (totalRows > 0) {
+    if (totalRows < 100) {
+      insights.push('Small dataset detected - consider collecting more data for robust statistical analysis.');
+    } else if (totalRows > 10000) {
+      insights.push('Large dataset provides good statistical power for analysis and modeling.');
+    }
+  }
+  
+  if (numericalCount > categoricalCount) {
+    insights.push('Dataset is predominantly numerical, suitable for statistical modeling and regression analysis.');
+  } else if (categoricalCount > numericalCount) {
+    insights.push('High proportion of categorical data suggests focus on classification or segmentation analysis.');
+  }
+  
+  if (dataSummary.includes('correlation')) {
+    insights.push('Correlations detected between variables - investigate for potential multicollinearity in modeling.');
+  }
+  
+  insights.push('Data preprocessing may be needed before advanced analysis - check for missing values and outliers.');
+  insights.push('Consider creating data visualizations to better understand variable distributions and relationships.');
+  
+  return insights;
 }

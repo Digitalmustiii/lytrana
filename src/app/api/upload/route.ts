@@ -60,13 +60,22 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    const timestamp = Date.now();
-    
-    // Store CSV data as base64 for retrieval
-    const fileUrl = `data:text/csv;base64,${Buffer.from(csvText).toString('base64')}`;
+    // Create a sample of the data (first 100 rows) for preview
+    const sampleData = dataRows.slice(0, 100).map(row => {
+      const cols = row.split(',').map(col => col.trim().replace(/"/g, ''));
+      const rowObj: Record<string, string | number> = {};
+      headers.forEach((header, index) => {
+        const cellValue = cols[index] || '';
+        // Try to convert to number if it looks numeric
+        const numericValue = Number(cellValue);
+        rowObj[header] = !isNaN(numericValue) && cellValue !== '' ? numericValue : cellValue;
+      });
+      return rowObj;
+    });
 
+    // Store only metadata and sample data (not the full CSV)
     const fileInfo = {
-      id: timestamp.toString(),
+      id: Date.now().toString(),
       filename: file.name,
       originalName: file.name,
       size: file.size,
@@ -75,8 +84,8 @@ export async function POST(request: NextRequest) {
       columnCount: headers.length,
       headers: headers,
       columns: columns,
-      fileUrl: fileUrl,
-      csvData: csvText
+      sampleData: sampleData, // Only first 100 rows
+      // Don't store the full csvData or fileUrl with base64 data
     };
 
     console.log('✅ Returning success response with columns:', columns);
@@ -84,17 +93,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'File uploaded successfully',
       file: fileInfo,
-      fileUrl: fileUrl,
-      csvData: csvText,
       columns: columns,
       rowCount: dataRows.length,
-      columnCount: headers.length
+      columnCount: headers.length,
+      sampleData: sampleData,
+      // Store the CSV text temporarily in the response for analysis
+      // but don't persist it in Convex
+      csvData: csvText, // Only for immediate analysis
     });
 
   } catch (error) {
     console.error('💥 Upload error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to upload file',
         details: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
@@ -106,7 +117,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   console.log('📡 Upload endpoint health check');
-  return NextResponse.json({ 
+  return NextResponse.json({
     message: 'Upload endpoint ready',
     timestamp: new Date().toISOString(),
     status: 'healthy'
