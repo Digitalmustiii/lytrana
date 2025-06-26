@@ -79,4 +79,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Made with 💜 by **Mustiii**
 
-[Get Started Now](your-app-url)
+[Get Started Now](https://github.com/Digitalmustiii/lytrana)
