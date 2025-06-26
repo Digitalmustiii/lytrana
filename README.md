@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lytrana AI
+
+**AI-powered data insights platform for CSV analysis, instant reports, and team collaboration with mobile-ready dashboards.**
+
+## Features
+
+- **Easy Data Upload** - Drag and drop CSV files or browse to upload
+- **Smart Analytics** - AI-powered statistical analysis with auto-generated visualizations
+- **Mobile Ready** - Access your data insights on any device, anywhere
+- **Team Collaboration** - Share insights through interactive dashboards
+- **Secure & Private** - End-to-end encryption and data protection
+- **Export Reports** - Generate professional reports in multiple formats
+
+## Tech Stack
+
+- **Frontend**: Next.js with TypeScript
+- **AI**: Google Gemini AI
+- **Backend**: Convex
+- **CSV Processing**: Papaparse
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- Google Gemini AI API key
+- Convex account
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### Installation
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/lytrana-ai.git
+   cd lytrana-ai
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Add your keys:
+   ```env
+   NEXT_PUBLIC_CONVEX_URL=your_convex_url
+   GEMINI_API_KEY=your_gemini_api_key
+   CONVEX_DEPLOY_KEY=your_convex_deploy_key
+   ```
 
-## Learn More
+4. **Run the project**
+   ```bash
+   npx convex dev
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+5. **Open [http://localhost:3000](http://localhost:3000)**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Contributing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## Deploy on Vercel
+## Contact
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Email: [sanusimustapha387@gmail.com](mailto:sanusimustapha387@gmail.com)
+- Response Time: Usually within 24 hours
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+Made with 💜 by **Mustiii**
+
+[Get Started Now](your-app-url)
