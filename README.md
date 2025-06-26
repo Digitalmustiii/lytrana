@@ -29,8 +29,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/lytrana-ai.git
-   cd lytrana-ai
+   git clone https://github.com/yourusername/lytrana.git
+   cd lytrana
    ```
 
 2. **Install dependencies**
@@ -79,4 +79,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Made with 💜 by **Mustiii**
 
-[Get Started Now](https://github.com/Digitalmustiii/lytrana)
+[Get Started Now](https://lytrana.vercel.app/)
